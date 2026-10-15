@@ -93,7 +93,8 @@ banking:
   notification:
     from-address: ${NOTIFICATION_FROM:alerts@bank.example}
     max-attempts: 5
-    retry-interval: 60000
+    base-backoff: PT10S
+    poll-interval: 2000
     sms:
       provider: ${SMS_PROVIDER:log}
   kafka:
