@@ -157,6 +157,7 @@ idempotent replay, key reuse, insufficient funds, ownership, KYC refusal and con
 
 - `Dockerfile` builds a small non-root runtime image for any module: `docker build --build-arg MODULE=account-service .`
 - `k8s/base` (Kustomize): Deployments, Services, HPAs, PodDisruptionBudgets, NetworkPolicies, Ingress, ConfigMap. Intended for EKS with Amazon RDS (PostgreSQL), MSK (Kafka) and ElastiCache (Redis).
+- Load balancing, autoscaling and scaling limits: see [docs/scaling.md](docs/scaling.md).
 - `.github/workflows/ci.yml`: build and test on every PR, validate manifests, build images, push to GHCR on `main`.
 
 ## Project layout
