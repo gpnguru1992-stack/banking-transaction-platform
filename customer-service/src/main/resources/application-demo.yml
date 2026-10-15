@@ -1,0 +1,4 @@
+# Loads demo customers (Asha CUST1001, Ravi CUST1002) that match the Keycloak demo users.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/common,classpath:db/seed

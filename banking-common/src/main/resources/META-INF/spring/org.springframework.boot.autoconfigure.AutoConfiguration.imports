@@ -1,0 +1,2 @@
+com.bank.common.BankingCommonAutoConfiguration
+com.bank.common.security.ResourceServerSecurityConfig

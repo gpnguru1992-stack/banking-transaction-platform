@@ -1,0 +1,119 @@
+spring:
+  application:
+    name: account-service
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/account_db}
+    username: ${DB_USERNAME:account_svc}
+    password: ${DB_PASSWORD:account_svc}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      connection-timeout: 3000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+  flyway:
+    locations: classpath:db/migration,classpath:db/common
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+    template:
+      observation-enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8180/realms/banking}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8180/realms/banking/protocol/openid-connect/certs}
+          audiences: banking-api
+
+server:
+  port: ${SERVER_PORT:8082}
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+banking:
+  transfer:
+    max-amount: 200000.00
+    daily-limit: 500000.00
+    supported-currencies: INR
+    zone: Asia/Kolkata
+    idempotency-lock-ttl: PT30S
+  clients:
+    customer-service:
+      url: ${CUSTOMER_SERVICE_URL:http://localhost:8081}
+      connect-timeout: 2s
+      read-timeout: 3s
+  kafka:
+    partitions: 6
+    replicas: ${KAFKA_REPLICAS:1}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      customer-service:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 2s
+        slow-call-rate-threshold: 80
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 3
+        register-health-indicator: true
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+  retry:
+    instances:
+      customer-service:
+        max-attempts: 3
+        wait-duration: 200ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
