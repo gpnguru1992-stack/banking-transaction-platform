@@ -7,7 +7,7 @@ CREATE TABLE transaction_record (
     type                 VARCHAR(20)    NOT NULL,
     direction            VARCHAR(10)    NOT NULL,
     amount               NUMERIC(19, 2) NOT NULL,
-    currency             CHAR(3)        NOT NULL,
+    currency             VARCHAR(3)        NOT NULL,
     balance_after        NUMERIC(19, 2),
     status               VARCHAR(20)    NOT NULL,
     description          VARCHAR(500),

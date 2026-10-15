@@ -18,7 +18,6 @@
                 <includeMdcKeyName>traceId</includeMdcKeyName>
                 <includeMdcKeyName>spanId</includeMdcKeyName>
                 <includeMdcKeyName>correlationId</includeMdcKeyName>
-                <customFields>{"service":"${service}"}</customFields>
             </encoder>
         </appender>
     </springProfile>

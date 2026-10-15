@@ -3,7 +3,9 @@ package com.bank.gateway;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpRequestDecorator;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -22,9 +24,15 @@ public class CorrelationIdGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String incoming = exchange.getRequest().getHeaders().getFirst(HEADER);
         String correlationId = incoming != null && SAFE.matcher(incoming).matches() ? incoming : UUID.randomUUID().toString();
-        ServerHttpRequest request = exchange.getRequest().mutate()
-                .headers(h -> h.set(HEADER, correlationId))
-                .build();
+        HttpHeaders headers = new HttpHeaders();
+        headers.putAll(exchange.getRequest().getHeaders());
+        headers.set(HEADER, correlationId);
+        ServerHttpRequest request = new ServerHttpRequestDecorator(exchange.getRequest()) {
+            @Override
+            public HttpHeaders getHeaders() {
+                return headers;
+            }
+        };
         exchange.getResponse().getHeaders().set(HEADER, correlationId);
         return chain.filter(exchange.mutate().request(request).build());
     }

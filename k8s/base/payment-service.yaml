@@ -1,0 +1,118 @@
+# DB/SMTP credentials come from Secrets created out-of-band (e.g. External Secrets Operator + AWS Secrets Manager).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: banking
+  labels: {app: payment-service, app.kubernetes.io/part-of: banking-platform}
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector:
+    matchLabels: {app: payment-service}
+  template:
+    metadata:
+      labels: {app: payment-service, app.kubernetes.io/part-of: banking-platform}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8083"
+    spec:
+      serviceAccountName: payment-service
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {app: payment-service}
+      containers:
+        - name: payment-service
+          image: ghcr.io/gpnguru1992-stack/banking-payment-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8083}
+          envFrom:
+            - configMapRef: {name: banking-shared-config}
+          env:
+            - name: SERVER_PORT
+              value: "8083"
+            - name: DB_URL
+              valueFrom: {secretKeyRef: {name: payment-service-db, key: url}}
+            - name: DB_USERNAME
+              valueFrom: {secretKeyRef: {name: payment-service-db, key: username}}
+            - name: DB_PASSWORD
+              valueFrom: {secretKeyRef: {name: payment-service-db, key: password}}
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {memory: 1Gi}
+          startupProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: {path: /actuator/health/readiness, port: http}
+            periodSeconds: 5
+          lifecycle:
+            preStop:
+              exec: {command: ["sh", "-c", "sleep 10"]}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: tmp, emptyDir: {}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: payment-service
+  namespace: banking
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: banking
+  labels: {app: payment-service}
+spec:
+  selector: {app: payment-service}
+  ports:
+    - {name: http, port: 8083, targetPort: http}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: payment-service
+  namespace: banking
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: payment-service}
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 70}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payment-service
+  namespace: banking
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app: payment-service}

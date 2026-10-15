@@ -10,7 +10,10 @@ import com.bank.common.messaging.ProcessedMessageRepository;
 import com.bank.common.web.CorrelationIdFilter;
 import com.bank.common.web.GlobalExceptionHandler;
 import com.bank.common.web.RequestContextPropagationInterceptor;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -42,6 +45,14 @@ import java.time.Clock;
 @EnableScheduling
 @EnableConfigurationProperties(OutboxProperties.class)
 public class BankingCommonAutoConfiguration {
+
+    /** Money must never pass through binary floating point, including inside event payload trees. */
+    @Bean
+    Jackson2ObjectMapperBuilderCustomizer exactDecimalJson() {
+        return builder -> builder
+                .featuresToEnable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+                .postConfigurer(mapper -> mapper.setNodeFactory(JsonNodeFactory.withExactBigDecimals(true)));
+    }
 
     @Bean
     @ConditionalOnMissingBean

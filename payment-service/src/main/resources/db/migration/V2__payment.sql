@@ -5,7 +5,7 @@ CREATE TABLE payment (
     from_account            VARCHAR(20)    NOT NULL,
     to_account              VARCHAR(20)    NOT NULL,
     amount                  NUMERIC(19, 2) NOT NULL,
-    currency                CHAR(3)        NOT NULL,
+    currency                VARCHAR(3)        NOT NULL,
     reference               VARCHAR(140),
     status                  VARCHAR(20)    NOT NULL,
     failure_code            VARCHAR(50),
