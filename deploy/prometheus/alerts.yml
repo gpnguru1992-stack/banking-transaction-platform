@@ -1,0 +1,33 @@
+groups:
+  - name: banking
+    rules:
+      - alert: ServiceDown
+        expr: up{job="banking-services"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.instance }} is down"
+      - alert: HighTransferFailureRate
+        expr: sum(rate(banking_transfers_total{outcome="failed"}[5m])) / clamp_min(sum(rate(banking_transfers_total[5m])), 1e-9) > 0.2
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "More than 20% of transfers are failing"
+      - alert: OutboxBacklog
+        expr: max(outbox_events_pending) > 1000
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Outbox events are not being published to Kafka"
+      - alert: CustomerServiceCircuitOpen
+        expr: max(resilience4j_circuitbreaker_state{name="customer-service",state="open"}) == 1
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Account service cannot reach customer service; transfers are being rejected"
+      - alert: HighErrorRate
+        expr: sum by (application) (rate(http_server_requests_seconds_count{status=~"5.."}[5m])) > 1
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.application }} is returning 5xx errors"

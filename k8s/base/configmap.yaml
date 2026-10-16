@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: banking-shared-config
+  namespace: banking
+data:
+  SPRING_PROFILES_ACTIVE: k8s
+  KAFKA_BOOTSTRAP_SERVERS: kafka-bootstrap.kafka.svc:9092   # e.g. Amazon MSK / Strimzi
+  KAFKA_REPLICAS: "3"
+  REDIS_HOST: redis.banking-infra.svc                    # e.g. Amazon ElastiCache
+  JWT_ISSUER_URI: https://auth.bank.example/realms/banking
+  JWT_JWK_SET_URI: https://auth.bank.example/realms/banking/protocol/openid-connect/certs
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.observability.svc:4318/v1/traces
+  TRACING_SAMPLING: "0.1"
+  CUSTOMER_SERVICE_URL: http://customer-service:8081
+  ACCOUNT_SERVICE_URL: http://account-service:8082
+  PAYMENT_SERVICE_URL: http://payment-service:8083
+  TRANSACTION_SERVICE_URL: http://transaction-service:8084
+  NOTIFICATION_SERVICE_URL: http://notification-service:8085

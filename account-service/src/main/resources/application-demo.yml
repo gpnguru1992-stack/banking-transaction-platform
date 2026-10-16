@@ -1,0 +1,4 @@
+# Loads demo accounts ACC1001 (Asha, CUST1001) and ACC2001 (Ravi, CUST1002).
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/common,classpath:db/seed

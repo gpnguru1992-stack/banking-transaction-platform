@@ -1,0 +1,148 @@
+{
+  "realm": "banking",
+  "enabled": true,
+  "accessTokenLifespan": 900,
+  "sslRequired": "external",
+  "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "CUSTOMER",
+        "description": "Retail banking customer"
+      },
+      {
+        "name": "OPERATIONS",
+        "description": "Bank operations staff"
+      },
+      {
+        "name": "ADMIN",
+        "description": "Bank administrator"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "banking-app",
+      "name": "Banking web/mobile app (demo)",
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "redirectUris": [
+        "http://localhost:*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "customer_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "customer_id",
+            "claim.name": "customer_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "banking-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "banking-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "asha",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Asha",
+      "lastName": "Sharma",
+      "email": "asha.sharma@example.com",
+      "attributes": {
+        "customer_id": [
+          "CUST1001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "asha-demo-pass",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "CUSTOMER"
+      ]
+    },
+    {
+      "username": "ravi",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ravi",
+      "lastName": "Kumar",
+      "email": "ravi.kumar@example.com",
+      "attributes": {
+        "customer_id": [
+          "CUST1002"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ravi-demo-pass",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "CUSTOMER"
+      ]
+    },
+    {
+      "username": "ops",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ops",
+      "lastName": "User",
+      "email": "ops@bank.example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ops-demo-pass",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "OPERATIONS"
+      ]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "email": "admin@bank.example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin-demo-pass",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ADMIN",
+        "OPERATIONS"
+      ]
+    }
+  ]
+}
