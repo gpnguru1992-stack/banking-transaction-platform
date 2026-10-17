@@ -80,6 +80,13 @@ management:
       endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
 
 banking:
+  clearing:
+    url: ${CLEARING_URL:http://localhost:8090}
+    connect-timeout: 2s
+    read-timeout: 3s
+    neft-batch-interval: ${NEFT_BATCH_INTERVAL:PT30M}
+    max-attempts: 10
+    poll-interval: 1000
   business-zone: Asia/Kolkata
   kafka:
     partitions: 6

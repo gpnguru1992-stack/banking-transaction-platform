@@ -3,6 +3,7 @@ package com.bank.transaction.service;
 import com.bank.common.event.EventEnvelope;
 import com.bank.common.event.EventTypes;
 import com.bank.common.event.FundsDepositedEvent;
+import com.bank.common.event.InterbankTransferEvent;
 import com.bank.common.event.Topics;
 import com.bank.common.event.TransferCompletedEvent;
 import com.bank.common.event.TransferFailedEvent;
@@ -86,7 +87,24 @@ public class EventProjector {
                         "DEPOSIT", "CREDIT", e.amount(), e.currency(), e.balanceAfter(), "COMPLETED", e.reference(),
                         e.depositedAt()));
             }
+            case EventTypes.INTERBANK_TRANSFER_INITIATED -> {
+                InterbankTransferEvent e = codec.payload(envelope, InterbankTransferEvent.class);
+                transactions.save(new TransactionRecord(e.transferId(), e.fromAccount(), e.customerId(),
+                        e.beneficiaryAccount(), "INTERBANK", "DEBIT", e.amount(), e.currency(), e.balanceAfter(),
+                        "COMPLETED", interbankDescription(e), e.occurredAt()));
+            }
+            case EventTypes.INTERBANK_TRANSFER_REFUNDED -> {
+                InterbankTransferEvent e = codec.payload(envelope, InterbankTransferEvent.class);
+                transactions.save(new TransactionRecord(e.transferId(), e.fromAccount(), e.customerId(),
+                        e.beneficiaryAccount(), "REFUND", "CREDIT", e.amount(), e.currency(), e.balanceAfter(),
+                        "COMPLETED", "Refund of " + interbankDescription(e) + ": " + e.reason(), e.occurredAt()));
+            }
             default -> log.debug("Audited {} without projection", envelope.eventType());
         }
+    }
+
+    private static String interbankDescription(InterbankTransferEvent e) {
+        String text = e.rail() + " to " + e.beneficiaryName() + " " + e.beneficiaryIfsc() + "/" + e.beneficiaryAccount();
+        return e.reference() == null ? text : text + " - " + e.reference();
     }
 }

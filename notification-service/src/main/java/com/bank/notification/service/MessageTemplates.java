@@ -38,6 +38,29 @@ public final class MessageTemplates {
                         .formatted(money(amount, currency), mask(account), reason));
     }
 
+    public static Message interbankDebit(String account, String rail, String beneficiaryName, String beneficiaryAccount,
+                                         String ifsc, BigDecimal amount, String currency, BigDecimal balance) {
+        return new Message("Debit alert: " + money(amount, currency),
+                "%s has been debited from your account %s for a %s transfer to %s (%s, %s). It is being processed by the beneficiary bank. Available balance: %s. If you did not make this transfer, call us immediately."
+                        .formatted(money(amount, currency), mask(account), rail, beneficiaryName, mask(beneficiaryAccount),
+                                ifsc, money(balance, currency)));
+    }
+
+    public static Message interbankSettled(String rail, String beneficiaryName, String beneficiaryAccount,
+                                           BigDecimal amount, String currency, String utr) {
+        return new Message("Transfer credited: " + money(amount, currency),
+                "Your %s transfer of %s to %s (%s) has been credited by the beneficiary bank. UTR: %s."
+                        .formatted(rail, money(amount, currency), beneficiaryName, mask(beneficiaryAccount), utr));
+    }
+
+    public static Message interbankRefunded(String account, String rail, String beneficiaryAccount, BigDecimal amount,
+                                            String currency, String reason, BigDecimal balance) {
+        return new Message("Transfer failed, money refunded",
+                "Your %s transfer of %s to %s could not be completed: %s. %s has been returned to your account %s. Available balance: %s."
+                        .formatted(rail, money(amount, currency), mask(beneficiaryAccount), reason, money(amount, currency),
+                                mask(account), money(balance, currency)));
+    }
+
     public static String mask(String account) {
         if (account == null || account.length() <= 4) {
             return "XXXX";

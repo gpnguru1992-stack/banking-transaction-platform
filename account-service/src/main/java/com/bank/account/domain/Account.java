@@ -81,6 +81,16 @@ public class Account {
         updatedAt = now;
     }
 
+    /** Returns money for a failed outgoing payment; allowed on frozen accounts, never on closed ones. */
+    public void refund(BigDecimal amount, Instant now) {
+        requirePositive(amount);
+        if (status == AccountStatus.CLOSED) {
+            throw new AccountRuleViolation("ACCOUNT_CLOSED", "Account " + accountNumber + " is closed");
+        }
+        balance = balance.add(amount);
+        updatedAt = now;
+    }
+
     public void changeStatus(AccountStatus newStatus, Instant now) {
         if (status == AccountStatus.CLOSED) {
             throw new AccountRuleViolation("ACCOUNT_CLOSED", "Account " + accountNumber + " is closed");

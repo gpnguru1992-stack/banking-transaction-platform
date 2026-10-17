@@ -16,4 +16,5 @@ data:
   ACCOUNT_SERVICE_URL: http://account-service:8082
   PAYMENT_SERVICE_URL: http://payment-service:8083
   TRANSACTION_SERVICE_URL: http://transaction-service:8084
+  CLEARING_URL: https://clearing-connector.banking-integration.svc   # bank's NPCI/RBI connector (mTLS)
   NOTIFICATION_SERVICE_URL: http://notification-service:8085

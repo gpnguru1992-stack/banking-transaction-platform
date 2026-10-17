@@ -11,6 +11,9 @@ public final class Topics {
     /** Owner: customer-service. Customer profile and KYC changes. */
     public static final String CUSTOMER_EVENTS = "customer-events";
 
+    /** Owner: payment-service. Clearing-network outcomes for interbank transfers. */
+    public static final String PAYMENT_EVENTS = "payment-events";
+
     public static final String DLT_SUFFIX = ".DLT";
 
     private Topics() {

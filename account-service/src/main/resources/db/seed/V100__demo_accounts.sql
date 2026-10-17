@@ -5,4 +5,5 @@ VALUES ('ACC1001', 'CUST1001', 'SAVINGS', 'INR', 100000.00, 'ACTIVE', now(), now
 
 INSERT INTO ledger_entry (id, account_number, reference_id, source, entry_type, amount, balance_after, currency, narrative, created_at)
 SELECT gen_random_uuid(), account_number, gen_random_uuid(), 'DEPOSIT', 'CREDIT', balance, balance, currency, 'Opening balance', now()
-FROM account;
+FROM account
+WHERE account_type <> 'INTERNAL';
