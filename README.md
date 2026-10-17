@@ -27,6 +27,7 @@ Customer ──REST──▶ API Gateway ──▶ Account Service ──REST─
 | `payment-service` | 8083 | Payment records and daily settlement totals (consumes `account-events`) | `payment_db` |
 | `transaction-service` | 8084 | Account statements and the platform-wide audit trail (consumes all events) | `transaction_db` |
 | `notification-service` | 8085 | Email/SMS alerts with retry and opt-out (consumes `account-events`, `customer-events`) | `notification_db` |
+| `clearing-simulator` | 8090 | Local stand-in for the clearing network and other banks (not deployed to production) | – |
 | `banking-common` | – | Event envelope, outbox relay, inbox, Kafka retry/DLT, security, errors, correlation, JSON logging | – |
 
 Each service is its own Maven module, Docker image, Kubernetes Deployment and database. One repository keeps the
@@ -71,6 +72,7 @@ Requirements: Java 17, Maven 3.9, Docker.
 mvn -DskipTests package           # build all services
 docker compose up -d --build      # Postgres, Kafka, Redis, Keycloak, Mailpit, observability + 6 services
 ./scripts/e2e-transfer.sh         # Asha sends INR 10,000 from ACC1001 to Ravi's ACC2001
+./scripts/e2e-interbank.sh        # IMPS / NEFT / RTGS to other banks: settled, refunded, timeout
 ```
 
 Demo data (only loaded by docker-compose via `SPRING_FLYWAY_LOCATIONS=...,classpath:db/seed`):
@@ -105,6 +107,8 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/accounts
 | Method & path | Who | Service |
 |---|---|---|
 | `POST /api/v1/transfers` (header `Idempotency-Key`) | customer | account |
+| `POST /api/v1/interbank-transfers` (IMPS/NEFT/RTGS, header `Idempotency-Key`), `GET /api/v1/interbank-transfers/{id}` | customer | account |
+| `GET /api/v1/payments/interbank/{transferId}` | owner / staff | payment |
 | `GET /api/v1/transfers/{id}` | owner / staff | account |
 | `GET /api/v1/accounts`, `GET /api/v1/accounts/{no}`, `GET /api/v1/accounts/{no}/balance` | owner / staff | account |
 | `POST /api/v1/accounts`, `POST /api/v1/accounts/{no}/deposits` | staff | account |
@@ -158,6 +162,7 @@ idempotent replay, key reuse, insufficient funds, ownership, KYC refusal and con
 - `Dockerfile` builds a small non-root runtime image for any module: `docker build --build-arg MODULE=account-service .`
 - `k8s/base` (Kustomize): Deployments, Services, HPAs, PodDisruptionBudgets, NetworkPolicies, Ingress, ConfigMap. Intended for EKS with Amazon RDS (PostgreSQL), MSK (Kafka) and ElastiCache (Redis).
 - Load balancing, autoscaling and scaling limits: see [docs/scaling.md](docs/scaling.md).
+- Transfers to other banks (IMPS / NEFT / RTGS): see [docs/interbank-transfers.md](docs/interbank-transfers.md).
 - `.github/workflows/ci.yml`: build and test on every PR, validate manifests, build images, push to GHCR on `main`.
 
 ## Project layout

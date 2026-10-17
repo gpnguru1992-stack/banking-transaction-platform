@@ -18,4 +18,10 @@ public class KafkaTopicsConfig {
                 .config("min.insync.replicas", String.valueOf(Math.min(2, replicas)))
                 .build();
     }
+
+    @Bean
+    NewTopic paymentEventsDlt(@Value("${banking.kafka.partitions:6}") int partitions,
+                              @Value("${banking.kafka.replicas:1}") int replicas) {
+        return TopicBuilder.name(Topics.PAYMENT_EVENTS + Topics.DLT_SUFFIX).partitions(partitions).replicas(replicas).build();
+    }
 }

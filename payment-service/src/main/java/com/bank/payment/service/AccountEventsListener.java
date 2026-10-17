@@ -1,5 +1,13 @@
 package com.bank.payment.service;
 
+import com.bank.common.event.InterbankTransferEvent;
+import com.bank.payment.clearing.ClearingDispatcher;
+import com.bank.payment.clearing.ClearingInstruction;
+import com.bank.payment.clearing.ClearingInstructionRepository;
+import com.bank.payment.clearing.ClearingProperties;
+import java.time.Instant;
+import java.util.UUID;
+
 import com.bank.common.event.EventEnvelope;
 import com.bank.common.event.EventTypes;
 import com.bank.common.event.Topics;
@@ -34,9 +42,14 @@ public class AccountEventsListener {
     private final Clock clock;
     private final ZoneId zone;
     private final MeterRegistry meterRegistry;
+    private final ClearingInstructionRepository clearing;
+    private final ClearingProperties clearingProperties;
 
     public AccountEventsListener(PaymentRepository repository, InboxService inbox, EventCodec codec, Clock clock,
-                                 @Value("${banking.business-zone:Asia/Kolkata}") ZoneId zone, MeterRegistry meterRegistry) {
+                                 @Value("${banking.business-zone:Asia/Kolkata}") ZoneId zone, MeterRegistry meterRegistry,
+                                 ClearingInstructionRepository clearing, ClearingProperties clearingProperties) {
+        this.clearing = clearing;
+        this.clearingProperties = clearingProperties;
         this.repository = repository;
         this.inbox = inbox;
         this.codec = codec;
@@ -53,6 +66,10 @@ public class AccountEventsListener {
     }
 
     private void handle(EventEnvelope envelope) {
+        if (EventTypes.INTERBANK_TRANSFER_INITIATED.equals(envelope.eventType())) {
+            queueForClearing(envelope);
+            return;
+        }
         boolean relevant = EventTypes.TRANSFER_COMPLETED.equals(envelope.eventType())
                 || EventTypes.TRANSFER_FAILED.equals(envelope.eventType());
         if (!relevant || !inbox.markProcessed(envelope.eventId(), CONSUMER)) {
@@ -70,5 +87,17 @@ public class AccountEventsListener {
         }
         meterRegistry.counter("banking.payments.recorded", "type", envelope.eventType()).increment();
         log.info("Recorded payment for transfer {} ({})", envelope.aggregateId(), envelope.eventType());
+    }
+
+    private void queueForClearing(EventEnvelope envelope) {
+        if (!inbox.markProcessed(envelope.eventId(), CONSUMER) || clearing.existsById(UUID.fromString(envelope.aggregateId()))) {
+            return;
+        }
+        InterbankTransferEvent e = codec.payload(envelope, InterbankTransferEvent.class);
+        Instant now = clock.instant();
+        clearing.save(new ClearingInstruction(e, envelope.correlationId(),
+                ClearingDispatcher.firstAttemptAt(e.rail(), now, clearingProperties.neftBatchInterval()), now));
+        meterRegistry.counter("banking.clearing.queued", "rail", e.rail().name()).increment();
+        log.info("Queued interbank transfer {} for {} clearing", e.transferId(), e.rail());
     }
 }

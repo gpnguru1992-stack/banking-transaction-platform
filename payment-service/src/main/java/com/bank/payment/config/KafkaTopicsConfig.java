@@ -15,4 +15,13 @@ public class KafkaTopicsConfig {
                               @Value("${banking.kafka.replicas:1}") int replicas) {
         return TopicBuilder.name(Topics.ACCOUNT_EVENTS + Topics.DLT_SUFFIX).partitions(partitions).replicas(replicas).build();
     }
+
+    /** Keyed by transfer id; owned by payment-service. */
+    @Bean
+    NewTopic paymentEventsTopic(@Value("${banking.kafka.partitions:6}") int partitions,
+                                @Value("${banking.kafka.replicas:1}") int replicas) {
+        return TopicBuilder.name(Topics.PAYMENT_EVENTS).partitions(partitions).replicas(replicas)
+                .config("min.insync.replicas", String.valueOf(Math.min(2, replicas)))
+                .build();
+    }
 }

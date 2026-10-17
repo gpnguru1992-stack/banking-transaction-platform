@@ -113,7 +113,16 @@ services:
       SERVER_PORT: 8083
       DB_URL: jdbc:postgresql://postgres:5432/payment_db
       SPRING_FLYWAY_LOCATIONS: classpath:db/migration,classpath:db/common
+      CLEARING_URL: http://clearing-simulator:8090
+      NEFT_BATCH_INTERVAL: PT20S
     ports: ["8083:8083"]
+
+  clearing-simulator:
+    build: {context: ., args: {MODULE: clearing-simulator}}
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8090
+    ports: ["8090:8090"]
 
   transaction-service:
     <<: *service

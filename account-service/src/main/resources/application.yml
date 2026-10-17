@@ -34,6 +34,15 @@ spring:
       properties:
         enable.idempotence: true
         max.in.flight.requests.per.connection: 5
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      isolation-level: read_committed
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      concurrency: ${KAFKA_LISTENER_CONCURRENCY:3}
+      observation-enabled: true
     template:
       observation-enabled: true
   security:
@@ -80,6 +89,11 @@ banking:
     supported-currencies: INR
     zone: Asia/Kolkata
     idempotency-lock-ttl: PT30S
+  interbank:
+    max-amount: 1000000.00
+    imps-max-amount: 500000.00
+    rtgs-min-amount: 200000.00
+    own-bank-code: BANK
   clients:
     customer-service:
       url: ${CUSTOMER_SERVICE_URL:http://localhost:8081}

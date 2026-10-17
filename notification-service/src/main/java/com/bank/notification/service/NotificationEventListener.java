@@ -4,6 +4,7 @@ import com.bank.common.event.CustomerEvent;
 import com.bank.common.event.EventEnvelope;
 import com.bank.common.event.EventTypes;
 import com.bank.common.event.FundsDepositedEvent;
+import com.bank.common.event.InterbankTransferEvent;
 import com.bank.common.event.Topics;
 import com.bank.common.event.TransferCompletedEvent;
 import com.bank.common.event.TransferFailedEvent;
@@ -78,6 +79,22 @@ public class NotificationEventListener {
                 FundsDepositedEvent e = codec.payload(envelope, FundsDepositedEvent.class);
                 notifyAll(envelope.eventId(), e.customerId(), MessageTemplates.deposit(e.accountNumber(), e.amount(),
                         e.currency(), e.balanceAfter()));
+            }
+            case EventTypes.INTERBANK_TRANSFER_INITIATED -> {
+                InterbankTransferEvent e = codec.payload(envelope, InterbankTransferEvent.class);
+                notifyAll(envelope.eventId(), e.customerId(), MessageTemplates.interbankDebit(e.fromAccount(),
+                        e.rail().name(), e.beneficiaryName(), e.beneficiaryAccount(), e.beneficiaryIfsc(), e.amount(),
+                        e.currency(), e.balanceAfter()));
+            }
+            case EventTypes.INTERBANK_TRANSFER_SETTLED -> {
+                InterbankTransferEvent e = codec.payload(envelope, InterbankTransferEvent.class);
+                notifyAll(envelope.eventId(), e.customerId(), MessageTemplates.interbankSettled(e.rail().name(),
+                        e.beneficiaryName(), e.beneficiaryAccount(), e.amount(), e.currency(), e.utr()));
+            }
+            case EventTypes.INTERBANK_TRANSFER_REFUNDED -> {
+                InterbankTransferEvent e = codec.payload(envelope, InterbankTransferEvent.class);
+                notifyAll(envelope.eventId(), e.customerId(), MessageTemplates.interbankRefunded(e.fromAccount(),
+                        e.rail().name(), e.beneficiaryAccount(), e.amount(), e.currency(), e.reason(), e.balanceAfter()));
             }
             default -> {
                 // not customer-facing

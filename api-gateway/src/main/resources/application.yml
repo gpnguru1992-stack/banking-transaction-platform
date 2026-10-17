@@ -46,7 +46,7 @@ spring:
         - id: account-service
           uri: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
           predicates:
-            - Path=/api/v1/accounts/**,/api/v1/transfers/**
+            - Path=/api/v1/accounts/**,/api/v1/transfers/**,/api/v1/interbank-transfers/**
         - id: payment-service
           uri: ${PAYMENT_SERVICE_URL:http://localhost:8083}
           predicates:
