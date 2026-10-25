@@ -188,5 +188,72 @@ services:
       - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports: ["3000:3000"]
 
+  # ---- Lakehouse (optional): docker compose --profile lakehouse up -d ----
+  # SeaweedFS = S3-compatible object store (use Amazon S3 in production), Nessie = Iceberg catalog, Dremio = SQL engine.
+  seaweedfs:
+    image: mirror.gcr.io/chrislusf/seaweedfs:3.79
+    profiles: [lakehouse]
+    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -master.volumeSizeLimitMB=256 -volume.max=50
+    volumes:
+      - ./deploy/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+      - lakedata:/data
+    ports: ["8333:8333"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status"]
+      interval: 5s
+      retries: 30
+
+  lakehouse-init:
+    image: mirror.gcr.io/chrislusf/seaweedfs:3.79
+    profiles: [lakehouse]
+    depends_on:
+      seaweedfs: {condition: service_healthy}
+    entrypoint: ["sh", "-c", "sleep 3 && echo 's3.bucket.create -name warehouse' | weed shell -master=seaweedfs:9333"]
+    restart: "no"
+
+  nessie:
+    image: ghcr.io/projectnessie/nessie:0.99.0
+    profiles: [lakehouse]
+    user: "0"
+    environment:
+      NESSIE_VERSION_STORE_TYPE: ROCKSDB
+      NESSIE_VERSION_STORE_PERSIST_ROCKS_DATABASE_PATH: /nessie/data
+    volumes:
+      - nessiedata:/nessie/data
+    ports: ["19120:19120"]
+
+  analytics-service:
+    build: {context: ., args: {MODULE: analytics-service}}
+    profiles: [lakehouse]
+    restart: unless-stopped
+    depends_on:
+      kafka: {condition: service_healthy}
+      nessie: {condition: service_started}
+      lakehouse-init: {condition: service_completed_successfully}
+    environment:
+      SERVER_PORT: 8086
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      NESSIE_URI: http://nessie:19120/api/v2
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_ACCESS_KEY_ID: lakehouse
+      S3_SECRET_ACCESS_KEY: lakehouse-demo-secret
+      LAKEHOUSE_FLUSH_INTERVAL: PT5S
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      JAVA_OPTS: -Xmx384m -XX:+ExitOnOutOfMemoryError
+    ports: ["8086:8086"]
+
+  dremio:
+    image: mirror.gcr.io/dremio/dremio-oss:25.2
+    profiles: [lakehouse]
+    environment:
+      DREMIO_MAX_HEAP_MEMORY_SIZE_MB: "1536"
+      DREMIO_MAX_DIRECT_MEMORY_SIZE_MB: "1536"
+    volumes:
+      - dremiodata:/opt/dremio/data
+    ports: ["9047:9047"]
+
 volumes:
   pgdata:
+  lakedata:
+  nessiedata:
+  dremiodata:

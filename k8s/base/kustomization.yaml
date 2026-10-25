@@ -9,5 +9,6 @@ resources:
   - payment-service.yaml
   - transaction-service.yaml
   - notification-service.yaml
+  - analytics-service.yaml
   - network-policies.yaml
   - ingress.yaml
