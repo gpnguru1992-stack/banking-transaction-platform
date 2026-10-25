@@ -11,5 +11,6 @@ scrape_configs:
           - payment-service:8083
           - transaction-service:8084
           - notification-service:8085
+          - analytics-service:8086
 rule_files:
   - /etc/prometheus/alerts.yml

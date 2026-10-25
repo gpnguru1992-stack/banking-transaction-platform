@@ -27,6 +27,7 @@
         <module>transaction-service</module>
         <module>notification-service</module>
         <module>clearing-simulator</module>
+        <module>analytics-service</module>
     </modules>
 
     <properties>

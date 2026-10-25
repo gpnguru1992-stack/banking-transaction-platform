@@ -28,6 +28,7 @@ Customer ──REST──▶ API Gateway ──▶ Account Service ──REST─
 | `transaction-service` | 8084 | Account statements and the platform-wide audit trail (consumes all events) | `transaction_db` |
 | `notification-service` | 8085 | Email/SMS alerts with retry and opt-out (consumes `account-events`, `customer-events`) | `notification_db` |
 | `clearing-simulator` | 8090 | Local stand-in for the clearing network and other banks (not deployed to production) | – |
+| `analytics-service` | 8086 | Streams account/payment events into Apache Iceberg tables (Nessie catalog, S3) for Dremio | Iceberg |
 | `banking-common` | – | Event envelope, outbox relay, inbox, Kafka retry/DLT, security, errors, correlation, JSON logging | – |
 
 Each service is its own Maven module, Docker image, Kubernetes Deployment and database. One repository keeps the
@@ -73,6 +74,10 @@ mvn -DskipTests package           # build all services
 docker compose up -d --build      # Postgres, Kafka, Redis, Keycloak, Mailpit, observability + 6 services
 ./scripts/e2e-transfer.sh         # Asha sends INR 10,000 from ACC1001 to Ravi's ACC2001
 ./scripts/e2e-interbank.sh        # IMPS / NEFT / RTGS to other banks: settled, refunded, timeout
+
+# Optional lakehouse: Iceberg tables + Dremio (needs ~3 GB more memory)
+docker compose --profile lakehouse up -d --build
+./scripts/dremio-setup.sh         # http://localhost:9047
 ```
 
 Demo data (only loaded by docker-compose via `SPRING_FLYWAY_LOCATIONS=...,classpath:db/seed`):
@@ -163,6 +168,7 @@ idempotent replay, key reuse, insufficient funds, ownership, KYC refusal and con
 - `k8s/base` (Kustomize): Deployments, Services, HPAs, PodDisruptionBudgets, NetworkPolicies, Ingress, ConfigMap. Intended for EKS with Amazon RDS (PostgreSQL), MSK (Kafka) and ElastiCache (Redis).
 - Load balancing, autoscaling and scaling limits: see [docs/scaling.md](docs/scaling.md).
 - Transfers to other banks (IMPS / NEFT / RTGS): see [docs/interbank-transfers.md](docs/interbank-transfers.md).
+- Iceberg lakehouse and Dremio SQL: see [docs/lakehouse.md](docs/lakehouse.md).
 - `.github/workflows/ci.yml`: build and test on every PR, validate manifests, build images, push to GHCR on `main`.
 
 ## Project layout

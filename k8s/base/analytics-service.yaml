@@ -1,0 +1,124 @@
+# S3 access comes from the pod IAM role (IRSA annotation on the ServiceAccount); no keys in config.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-service
+  namespace: banking
+  labels: {app: analytics-service, app.kubernetes.io/part-of: banking-platform}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector:
+    matchLabels: {app: analytics-service}
+  template:
+    metadata:
+      labels: {app: analytics-service, app.kubernetes.io/part-of: banking-platform}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8086"
+    spec:
+      serviceAccountName: analytics-service
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {app: analytics-service}
+      containers:
+        - name: analytics-service
+          image: ghcr.io/gpnguru1992-stack/banking-analytics-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8086}
+          envFrom:
+            - configMapRef: {name: banking-shared-config}
+          env:
+            - name: SERVER_PORT
+              value: "8086"
+            - name: LAKEHOUSE_WAREHOUSE
+              value: s3://bank-lakehouse-prod/
+            - name: NESSIE_URI
+              value: http://nessie.lakehouse.svc:19120/api/v2
+            - name: S3_ENDPOINT
+              value: https://s3.ap-south-1.amazonaws.com
+            - name: S3_PATH_STYLE_ACCESS
+              value: "false"
+            - name: AWS_REGION
+              value: ap-south-1
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {memory: 1Gi}
+          startupProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: {path: /actuator/health/readiness, port: http}
+            periodSeconds: 5
+          lifecycle:
+            preStop:
+              exec: {command: ["sh", "-c", "sleep 10"]}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: tmp, emptyDir: {}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: analytics-service
+  namespace: banking
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/banking-lakehouse-writer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: banking
+  labels: {app: analytics-service}
+spec:
+  selector: {app: analytics-service}
+  ports:
+    - {name: http, port: 8086, targetPort: http}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: analytics-service
+  namespace: banking
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: analytics-service}
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 70}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: analytics-service
+  namespace: banking
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app: analytics-service}

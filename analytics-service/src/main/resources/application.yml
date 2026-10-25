@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: analytics-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      isolation-level: read_committed
+      max-poll-records: 500
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    listener:
+      idle-event-interval: 5s
+      observation-enabled: true
+
+server:
+  port: ${SERVER_PORT:8086}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+banking:
+  business-zone: Asia/Kolkata
+  lakehouse:
+    catalog-name: lakehouse
+    namespace: banking
+    flush-rows: 1000
+    flush-interval: ${LAKEHOUSE_FLUSH_INTERVAL:PT10S}
+    catalog:
+      catalog-impl: org.apache.iceberg.nessie.NessieCatalog
+      uri: ${NESSIE_URI:http://localhost:19120/api/v2}
+      ref: main
+      warehouse: ${LAKEHOUSE_WAREHOUSE:s3://warehouse/}
+      io-impl: org.apache.iceberg.aws.s3.S3FileIO
+      s3.endpoint: ${S3_ENDPOINT:http://localhost:9000}
+      s3.path-style-access: ${S3_PATH_STYLE_ACCESS:true}
+      s3.access-key-id: ${S3_ACCESS_KEY_ID:}
+      s3.secret-access-key: ${S3_SECRET_ACCESS_KEY:}
+      client.region: ${AWS_REGION:us-east-1}
